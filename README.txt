@@ -14,12 +14,15 @@ Steps:
 6. Make HTTP calls to http://${my_server_ip}:7777/organizations
 
 TODO:
+- Add error handling in the event that a city, category or Orderby value does not exist
 - Automate build and deployment
     - build a python egg
     - script bringing up a docker container and installing requirements
     - script deploying the egg and starting the server
 - Implement API tests
 - Implement Unit tests and integrate into build
+    - unit test generate_query string with all of the combinations of parameters and check the query string
+    - mock the db and unit test query_db with of the combinations of parameters and check return
 - Performance tests and enhancements
 - API documentation
 - use a real logger with log levels and rollover
