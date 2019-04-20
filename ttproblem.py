@@ -1,10 +1,15 @@
 import psycopg2
 from flask import Flask
-from flask_restful import Api, Resource, reqparse
-import json
+from flask_restplus import Resource, Api
 
 
+app = Flask(__name__)
+api = Api(app)
+
+
+@api.route('/organizations')
 class organizations(Resource):
+    return_code = 200
 
     @staticmethod
     def generate_query(category, city, Orderby, Direction):
@@ -34,36 +39,58 @@ class organizations(Resource):
 
         return query_string
 
-    @staticmethod
-    def query_db(query_string, db_connection_string):
+    def query_db(self, query_string, db_connection_string):
         # connect to the DB
-        conn = psycopg2.connect(db_connection_string)
-        cur = conn.cursor()
+        conn = None
+        output = None
+        try:
+            conn = psycopg2.connect(db_connection_string)
+        except psycopg2.Warning as e:
+            print("Warning while connecting to the database: {}".format(e))
+        except psycopg2.Error as e:
+            print("Error while connecting to the database: {} {}".format(e.pgcode, e.pgerror))
+            self.return_code = 500
+            return None
 
-        # execute the query
-        cur.execute(query_string)
+        try:
+            cur = conn.cursor()
 
-        # stuff the query into an object so we can return it
-        row = cur.fetchone()
-        output = {'organizations': []}
+            # execute the query
+            cur.execute(query_string)
 
-        # add each row to the dict
-        while row is not None:
-            print("{}".format(row).encode('utf-8'))
-            output['organizations'].append(
-                {'id': row[0], 'name': row[1], 'city': row[2], 'state': row[3], 'postal': row[4], 'category': row[5]})
+            # stuff the query into an object so we can return it
             row = cur.fetchone()
+            output = {'organizations': []}
+
+            # add each row to the dict
+            while row is not None:
+                print("{}".format(row).encode('utf-8'))
+                output['organizations'].append(
+                    {'id': row[0], 'name': row[1], 'city': row[2], 'state': row[3], 'postal': row[4], 'category': row[5]})
+                row = cur.fetchone()
+        except psycopg2.Warning as e:
+            print("Warning while executing the query: {}".format(e))
+        except psycopg2.Error as e:
+            print("Error while executing the query: {} {}".format(e.pgcode, e.pgerror))
+            self.return_code = 500
 
         return output
 
+    # define the arguments
+    parser = api.parser()
+    parser.add_argument("category", type=str, help='Organization category for filtering results [optional]')
+    parser.add_argument("city", type=str, help='Organization city for filtering results [optional]')
+    parser.add_argument("Orderby", type=str, help='category or city for sorting results [optional]')
+    parser.add_argument("Direction", type=str, help='ASC or DSC to specify direction to order results [optional]')
+
+    @api.doc('filter, sort and list organizations')
+    @api.response(200, 'Success')
+    @api.response(404, 'Failed to find any organizations that meet the requested parameters')
+    @api.response(500, 'Failed to connect to the organizations data base')
+    @api.expect(parser)
     def get(self):
         # parse the arguments
-        parser = reqparse.RequestParser()
-        parser.add_argument("category")
-        parser.add_argument("city")
-        parser.add_argument("Orderby")
-        parser.add_argument("Direction")
-        args = parser.parse_args()
+        args = self.parser.parse_args()
 
         # see what was passed in
         print("{} {} {} {}".format(args.get('category'), args.get('city'), args.get('Orderby'), args.get('Direction')))
@@ -74,15 +101,13 @@ class organizations(Resource):
 
         output = self.query_db(query_string, "host=localhost dbname=postgres user=postgres password=superduper")
 
-        # TODO: maybe return a 404 here if there is no data to return?
-        #  Clarify the requirements for this to see what should be done here.
+        if output is None or output.get('organizations') is None or len(output['organizations']) == 0:
+            self.return_code = 404
 
-        # return the output from the query
-        return output
+        # return the output from the query, defaults 200 for the return code
+        return output, self.return_code
 
 
-# start the flask server
-app = Flask(__name__)
-api = Api(app)
-api.add_resource(organizations, "/organizations")
-app.run(host='0.0.0.0', port='7777')
+if __name__ == '__main__':
+    # start the flask server
+    app.run(host='0.0.0.0', port='7777')

@@ -7,14 +7,14 @@ postgresql-contrib
 
 Steps:
 1. Install and configure requirements listed above.
-2. pip install flask-restful
+2. pip install flask-restplus
 3. download the csv to the project directory
 4. run python3.6 loaddata.py
 5. run python3.6 ttproblem.py
 6. Make HTTP calls to http://${my_server_ip}:7777/organizations
+7. Point browser to http://${my_server_ip}:7777 for swagger documentation
 
 TODO:
-- Add error handling in the event that a city, category or Orderby value does not exist
 - Automate build and deployment
     - build a python egg
     - script bringing up a docker container and installing requirements
@@ -24,8 +24,8 @@ TODO:
     - unit test generate_query string with all of the combinations of parameters and check the query string
     - mock the db and unit test query_db with of the combinations of parameters and check return
 - Performance tests and enhancements
-- API documentation
 - use a real logger with log levels and rollover
 - use a production WSGI server
 - trim white spaces on import/input as trimming at retrieval time is not good for performance
-- think about stored procedures to help with performance
+- add authentication/security
+- refactor into separate classes when we add more API's for read-ability
